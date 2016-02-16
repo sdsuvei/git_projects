@@ -1,0 +1,43 @@
+#include <iostream>
+#include <pcl/point_types.h>
+#include <pcl/filters/passthrough.h>
+#include <pcl/io/pcd_io.h>
+
+int
+ main (int argc, char** argv)
+{
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered_X (new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered (new pcl::PointCloud<pcl::PointXYZ>);
+
+  if (pcl::io::loadPCDFile<pcl::PointXYZ> ("Lidar.pcd", *cloud) == -1) //* load the file
+  {
+    PCL_ERROR ("Couldn't read the Lidar point cloud. \n");
+    return (-1);
+  }
+
+  std::cerr << "Cloud before filtering: " <<cloud->points.size ()<< std::endl;
+
+
+  // Create the filtering object on the X axis
+  pcl::PassThrough<pcl::PointXYZ> pass_x;
+  pass_x.setInputCloud (cloud);
+  pass_x.setFilterFieldName ("x");
+  pass_x.setFilterLimits (-80.0, 2.0); // front-back axis
+  pass_x.filter (*cloud_filtered_X);
+
+ // pass.setFilterFieldName ("z");
+ // pass.setFilterLimits (-2.0, 0.0);
+
+  // Create the filtering object on the Y axis
+  pcl::PassThrough<pcl::PointXYZ> pass;
+  pass.setInputCloud (cloud_filtered_X);
+  pass.setFilterFieldName ("y");
+  pass.setFilterLimits (-4.0, 2.0);  // left-right axis
+  pass.filter (*cloud_filtered);
+
+
+  std::cerr << "Cloud after filtering: " <<cloud_filtered->points.size ()<< std::endl;
+  pcl::io::savePCDFile("Lidar_PF.pcd", *cloud_filtered);
+  return (0);
+}

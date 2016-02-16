@@ -1,0 +1,1 @@
+./stereo_match images/left1.jpg images/right1.jpg  --algorithm=bm --blocksize=21 --max-disparity=512 --min-disparity=0 -i stereo_parameters/intrinsics.yml -e stereo_parameters/entrinsics.yml -o o.png -p p.pcd

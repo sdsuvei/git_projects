@@ -1,0 +1,20 @@
+Size of LIDAR pointcloud: 19794
+Positive lidar points:261
+Negative lidar points:22
+Inliers lidar points:19511
+
+Size of BM pointcloud: 103251
+Positive BM points:5031
+Negative BM points:1502
+Inliers BM points:96718
+
+Size of stereo pointcloud: 417292
+Positive stereo points:5659
+Negative stereo points:690
+Inliers stereo points:410943
+
+Size of FUSED pointcloud: 123045
+Positive FUSED points:5292
+Negative FUSED points:1524
+Inliers FUSED points:116229
+
