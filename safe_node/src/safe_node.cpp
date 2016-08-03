@@ -4,10 +4,11 @@ using namespace cv;
 using namespace std;
 
 cv::Mat disp, DISP;
-int INTERVAL = 50;
+int INTERVAL = 70;
 std::vector<double> gauss;
 double gaussarr[3000];
 double std_d = 300;
+bool label = false;
 
 int main(int argc, char** argv) {
 
@@ -34,16 +35,28 @@ int main(int argc, char** argv) {
 
 		intrinsic_filename = "stereo_parameters/stereo_parameters_SAFE/int.yml";
 		extrinsic_filename = "stereo_parameters/stereo_parameters_SAFE/ent.yml";
-		disparity_filename1 = "results/SAFE/DISP1.png";
-		disparity_filename2 = "results/SAFE/DISP2.png";
-		point_cloud_filename = "pointclouds/pointclouds_SAFE/stereo_out.pcd";
 
-	for(int img_counter = 1; img_counter<2; img_counter++){
 
-	std::stringstream left_image;
+	for(int img_counter = 291; img_counter<297; img_counter++){
+
+
+	std::cout<<"Processing picture set " << img_counter << endl;
+	std::stringstream disp_file1, disp_file2, pc_file;
+	disp_file1 << "results/AU_data/Disp1/DISP1_" << img_counter << ".png";
+	disp_file2 << "results/AU_data/Disp2/DISP2_" << img_counter << ".png";
+	pc_file << "pointclouds/AU_pointclouds/Fused_cloud/fused_cloud_" << img_counter << ".pcd";
+
+	std::string s_disp_file1 = disp_file1.str();
+	std::string s_disp_file2 = disp_file2.str();
+	std::string s_pc_file = pc_file.str();
+
+	disparity_filename1 = s_disp_file1.c_str();
+	disparity_filename2 = s_disp_file2.c_str();
+	point_cloud_filename = s_pc_file.c_str();
+
+
+	std::stringstream left_image, right_image;
 	left_image << "images/AU_data/left/left_" << img_counter <<".png";
-
-	std::stringstream right_image;
 	right_image << "images/AU_data/right/right_" << img_counter <<".png";
 
 	std::string s_left = left_image.str();
@@ -130,12 +143,12 @@ int main(int argc, char** argv) {
 		//stereoRectify( M1, D1, M2, D2, img_size, R, T, R1, R2, P1, P2, Q, CALIB_ZERO_DISPARITY, -1, img_size, &roi1, &roi2 );
 		stereoRectify( M1, D1, M2, D2, img_size, R, T, R1, R2, P1, P2, Q, 0, 0, img_size, &roi1, &roi2 );
 
-		std::cout<<"R1 matrix:\n "<<R1<<endl<<endl;
-		std::cout<<"R2 matrix:\n "<<R2<<endl<<endl;
-		std::cout<<"P1 matrix:\n "<<P1<<endl<<endl;
-		std::cout<<"P2 matrix:\n "<<P2<<endl<<endl;
+		//std::cout<<"R1 matrix:\n "<<R1<<endl<<endl;
+		//std::cout<<"R2 matrix:\n "<<R2<<endl<<endl;
+		//std::cout<<"P1 matrix:\n "<<P1<<endl<<endl;
+		//std::cout<<"P2 matrix:\n "<<P2<<endl<<endl;
 
-		std::cout<<"P1 (0 3): "<<P1.at<double>(0,2)<<endl;
+		//std::cout<<"P1 (0 3): "<<P1.at<double>(0,2)<<endl;
 
 		Mat map11, map12, map21, map22;
 		initUndistortRectifyMap(M1, D1, R1, P1, img_size, CV_16SC2, map11, map12);
@@ -152,8 +165,12 @@ int main(int argc, char** argv) {
 		img2 = img2r;
 		img_colored = img_cr;
 
-		cv::imwrite("results/SAFE/left_rect.png",img1);
-		cv::imwrite("results/SAFE/right_rect.png",img2);
+		std::stringstream rect_left, rect_right;
+		rect_left << "results/AU_data/Left_rectified/left_rect" << img_counter <<".png";
+		rect_right << "results/AU_data/Right_rectified/right_rect" << img_counter <<".png";
+
+		cv::imwrite(rect_left.str(),img1);
+		cv::imwrite(rect_right.str(),img2);
 
 	}
 
@@ -290,9 +307,14 @@ int main(int argc, char** argv) {
 	saved_cloud.width = 1;
 	saved_cloud.height = saved_cloud.points.size();
 
+	std::stringstream stored_cloud;
+	stored_cloud << "pointclouds/AU_pointclouds/Saved_lidar/saved_lidar_" << img_counter <<".pcd";
 
-		pcl::io::savePCDFileASCII ("pointclouds/pointclouds_SAFE/saved_lidar.pcd", saved_cloud);
-		cv::imwrite("results/SAFE/lidar_disp.png",lidar_l);
+	pcl::io::savePCDFileASCII (stored_cloud.str(), saved_cloud);
+
+	std::stringstream lidar_map;
+	lidar_map << "results/AU_data/Lidar_disp/lidar_disp_" << img_counter <<".png";
+	cv::imwrite(lidar_map.str(),lidar_l);
 
 	// Initialize global LIDAR matrix
 	cv::Mat lidar_DISP=cv::Mat::ones(img1.rows, img1.cols, CV_16S);
@@ -401,12 +423,16 @@ int main(int argc, char** argv) {
 
 	cv::Mat kernel = cv::Mat::ones(3,3,CV_16S);
 
-		cv::dilate(src,dst, kernel, cv::Point(-1, -1), 11, 1, 1); // 11 for SAFE!!
-		// Apply the specified morphology operation
-		cv::imwrite("results/SAFE/dilated_lidar.png",dst);
-		DISP = dst;
+	cv::dilate(src,dst, kernel, cv::Point(-1, -1), 11, 1, 1); // 11 for SAFE!!
+	// Apply the specified morphology operation
 
-		cv::StereoBM bm;
+	std::stringstream dilated_lid;
+	dilated_lid << "results/AU_data/Dilated_lidar/dilated_lidar_" << img_counter << ".png";
+
+	cv::imwrite(dilated_lid.str(),dst);
+	DISP = dst;
+
+	cv::StereoBM bm;
 
 	numberOfDisparities = numberOfDisparities > 0 ? numberOfDisparities : ((img_size.width/8) + 15) & -16;
 	bm.state->roi1 = roi1;
@@ -437,7 +463,7 @@ int main(int argc, char** argv) {
 	seconds  = end.tv_sec  - start.tv_sec;
 	useconds = end.tv_usec - start.tv_usec;
 	mtime = ((seconds) * 1000 + useconds/1000.0) + 0.5;
-	printf("Elapsed time: %f seconds\n", (float)mtime/1000);
+	printf("Elapsed time: %f seconds ", (float)mtime/1000);
 
 	//t = getTickCount() - t;
 	//printf("Time elapsed: %fms\n", t*1000/getTickFrequency());
@@ -449,19 +475,21 @@ int main(int argc, char** argv) {
 	if(disparity_filename1)
 		imwrite(disparity_filename1, disp);
 
-	cout<<"Filling disparity with LIDAR information..."<<endl;
+	//cout<<"Filling disparity with LIDAR information..."<<endl;
 	for(int w = 0; w < disp.rows; ++w) {
-				for(int v = 0; v < disp.cols; ++v) {
-					if(disp.at<int16_t>(w,v)==-1 && DISP.at<int16_t>(w,v)>1)
-						{
-							disp.at<int16_t>(w,v) = DISP.at<int16_t>(w,v);
-						}
-					}
+		for(int v = 0; v < disp.cols; ++v) {
+			if(disp.at<int16_t>(w,v)==-1 && DISP.at<int16_t>(w,v)>1)
+				{
+					disp.at<int16_t>(w,v) = DISP.at<int16_t>(w,v);
 				}
+			}
+		}
 
 	if(disparity_filename2)
 		imwrite(disparity_filename2, disp);
 
+
+	//////////////////////////// FUNCTION FOR THIS  ///////////////////////////////////
 	//// Remove the tractor from the disparity map /point cloud
 	for(int w = 138; w < 434; ++w) {
 		for(int v = 0; v < 400; ++v) {
@@ -482,7 +510,7 @@ int main(int argc, char** argv) {
 	}
 
 	if(point_cloud_filename) {
-		printf("Storing the point cloud...");
+		//printf("Storing the point cloud...");
 		cout<<endl;
 		fflush(stdout);
 		// Get parameters for reconstruction
@@ -553,6 +581,8 @@ int main(int argc, char** argv) {
 		printf("\n");
 	}
 
+
+	/////////////////////////// FUNCTION FOR THIS /////////////////////////////
 	//// Segmentation of the point cloud
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>), cloud_croped (new pcl::PointCloud<pcl::PointXYZ>), cloud_filtered (new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane_filter (new pcl::PointCloud<pcl::PointXYZ>);
@@ -560,7 +590,7 @@ int main(int argc, char** argv) {
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_rad_filter (new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_obstacle1 (new pcl::PointCloud<pcl::PointXYZ>), cloud_obstacle2 (new pcl::PointCloud<pcl::PointXYZ>);
 
-	if (pcl::io::loadPCDFile<pcl::PointXYZ> ("pointclouds/pointclouds_SAFE/stereo_out.pcd", *cloud) == -1) //* load the file
+	if (pcl::io::loadPCDFile<pcl::PointXYZ> (pc_file.str(), *cloud) == -1) //* load the file
 	{
 		PCL_ERROR ("Couldn't read the point cloud. \n");
 		return -1;
@@ -571,11 +601,12 @@ int main(int argc, char** argv) {
 	pcl::PassThrough<pcl::PointXYZ> pass_x;
 	pass_x.setInputCloud (cloud);
 	pass_x.setFilterFieldName ("x");
-	pass_x.setFilterLimits (-5.0, 5.0);
+	pass_x.setFilterLimits (-5.0, 8.0);
 	pass_x.filter (*cloud_croped);
 	*cloud_filtered = *cloud_croped;
-
-	//pcl::io::savePCDFile("x_filter.pcd", *cloud_filtered);
+	std::stringstream pc_x_filtered;
+	pc_x_filtered << "pointclouds/AU_pointclouds/X_filtered/x_filter" << img_counter << ".pcd";
+	pcl::io::savePCDFile(pc_x_filtered.str(), *cloud_filtered);
 
 	// Create the segmentation object for the planar model and set all the parameters
 	pcl::SACSegmentation<pcl::PointXYZ> seg;
@@ -589,147 +620,173 @@ int main(int argc, char** argv) {
 	seg.setMaxIterations (100);
 	seg.setDistanceThreshold (0.25);
 
-	int i=0, nr_points = (int) cloud_filtered->points.size ();
-	while (cloud_filtered->points.size () > 0.3 * nr_points)
+	if(cloud_filtered->size()>0)
 	{
-		// Segment the largest planar component from the remaining cloud
-		seg.setInputCloud (cloud_filtered);
-		seg.segment (*inliers, *coefficients);
-		if (inliers->indices.size () == 0)
+		int i=0, nr_points = (int) cloud_filtered->points.size ();
+		while (cloud_filtered->points.size () > 0.3 * nr_points)
 		{
-		  std::cout << "Could not estimate a planar model for the given dataset." << std::endl;
-		  break;
+			// Segment the largest planar component from the remaining cloud
+			seg.setInputCloud (cloud_filtered);
+			seg.segment (*inliers, *coefficients);
+			if (inliers->indices.size () == 0)
+			{
+			  std::cout << "Could not estimate a planar model for the given dataset." << std::endl;
+			  break;
+			}
+
+			// Extract the planar inliers from the input cloud
+			pcl::ExtractIndices<pcl::PointXYZ> extract;
+			extract.setInputCloud (cloud_filtered);
+			extract.setIndices (inliers);
+			// Remove the planar inliers, extract the rest
+			extract.setNegative (true);
+			extract.filter (*cloud_plane_filter);
+			*cloud_filtered = *cloud_plane_filter;
+			if(cloud_filtered->size()>0){
+				std::stringstream plane_filtered_pc;
+				plane_filtered_pc <<"pointclouds/AU_pointclouds/Plane_filtered/plane_filter_" << img_counter << ".pcd";
+				pcl::io::savePCDFile(plane_filtered_pc.str(), *cloud_filtered);
+			}
+			else cout<<"No obstacles found!"<<endl;
 		}
 
-		// Extract the planar inliers from the input cloud
-		pcl::ExtractIndices<pcl::PointXYZ> extract;
-		extract.setInputCloud (cloud_filtered);
-		extract.setIndices (inliers);
-		// Remove the planar inliers, extract the rest
-		extract.setNegative (true);
-		extract.filter (*cloud_plane_filter);
-		*cloud_filtered = *cloud_plane_filter;
-		//pcl::io::savePCDFile("plane_filter.pcd", *cloud_filtered);
+		if(cloud_filtered->size()>0){
+			// Apply radius outlier filter
+			pcl::RadiusOutlierRemoval<pcl::PointXYZ> outrem;
+			outrem.setInputCloud(cloud_filtered);
+			outrem.setRadiusSearch(0.5);
+			outrem.setMinNeighborsInRadius (8000);
+			// apply filter
+			outrem.filter (*cloud_rad_filter);
+			if(cloud_rad_filter->size()>0){
+			*cloud_filtered = *cloud_rad_filter;
+			std::stringstream radius_filtered_pc;
+			radius_filtered_pc <<"pointclouds/AU_pointclouds/Radius_filtered/radius_filter_" << img_counter << ".pcd";
+			pcl::io::savePCDFile(radius_filtered_pc.str(), *cloud_filtered);
+			// Creating the KdTree object for the search method of the extraction
+			pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ>);
+			tree->setInputCloud (cloud_filtered);
 
-	}
+			std::vector<pcl::PointIndices> cluster_indices;
+			pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
+			ec.setClusterTolerance (0.09); // 2cm
+			ec.setMinClusterSize (8000);
+			ec.setMaxClusterSize (55000);
+			ec.setSearchMethod (tree);
+			ec.setInputCloud (cloud_filtered);
+			ec.extract (cluster_indices);
 
-	// Apply radius outlier filter
-	pcl::RadiusOutlierRemoval<pcl::PointXYZ> outrem;
-	outrem.setInputCloud(cloud_filtered);
-	outrem.setRadiusSearch(0.5);
-	outrem.setMinNeighborsInRadius (8000);
-	// apply filter
-	outrem.filter (*cloud_rad_filter);
-	*cloud_filtered = *cloud_rad_filter;
-	//pcl::io::savePCDFile("radius_filter.pcd", *cloud_filtered);
-
-	// Creating the KdTree object for the search method of the extraction
-	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ>);
-	tree->setInputCloud (cloud_filtered);
-
-	std::vector<pcl::PointIndices> cluster_indices;
-	pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
-	ec.setClusterTolerance (0.09); // 2cm
-	ec.setMinClusterSize (8000);
-	ec.setMaxClusterSize (55000);
-	ec.setSearchMethod (tree);
-	ec.setInputCloud (cloud_filtered);
-	ec.extract (cluster_indices);
-
-	int j = 0;
-	for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
-	{
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster (new pcl::PointCloud<pcl::PointXYZ>);
-	for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); ++pit)
-	  cloud_cluster->points.push_back (cloud_filtered->points[*pit]); //*
-
-	cloud_cluster->width = cloud_cluster->points.size ();
-	cloud_cluster->height = 1;
-	cloud_cluster->is_dense = true;
-	std::cout << "PointCloud representing the Cluster: " << cloud_cluster->points.size () << " data points." << std::endl;
-	//std::stringstream ss;
-	//ss << "cluster_" << j << ".pcd";
-	//writer.write<pcl::PointXYZ> (ss.str (), *cloud_cluster, false); //*
-
-	Lcloud=*cloud_cluster;
-	//// Create empty disparity map for Lidar data
-	cv::Mat obstacle_=cv::Mat::zeros(img1.rows, img1.cols, CV_16S);
-
-	for (int i = 0; i < Lcloud.points.size (); ++i)  //try with cloud height and width
-	{
-		//// Scale position from m to mm;
-		Lcloud.points[i].x = Lcloud.points[i].x/0.001;
-		Lcloud.points[i].y = Lcloud.points[i].y/0.001;
-		Lcloud.points[i].z = Lcloud.points[i].z/0.001;
-
-		float d = (Lcloud.points[i].z*dcx-f*B)/Lcloud.points[i].z; // disparity
-		float W = B/(-d+dcx); // Weighting
-		int x = (Lcloud.points[i].x+cx*W)/W; // x value
-		int y = (Lcloud.points[i].y+cy*W)/W; // y value
-
-		//// Filter out all LIDAR points which are outside the camera view
-		if(y>=0 && y<obstacle_.rows && x>=0 && x<obstacle_.cols)
+			int j = 0;
+			for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
 			{
-				obstacle_.at<int16_t>(y,x)=d;
-			}
-	}
+				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster (new pcl::PointCloud<pcl::PointXYZ>);
+				for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); ++pit)
+				  cloud_cluster->points.push_back (cloud_filtered->points[*pit]); //*
 
-	cv::Point corner_1, corner_2;
-	corner_1.x = 99999;
-	corner_1.y = 99999;
-	corner_2.x = -99999;
-	corner_2.y = -99999;
+				cloud_cluster->width = cloud_cluster->points.size ();
+				cloud_cluster->height = 1;
+				cloud_cluster->is_dense = true;
+				//std::cout << "PointCloud representing the Cluster: " << cloud_cluster->points.size () << " data points." << std::endl;
+				//std::stringstream ss;
+				//ss << "cluster_" << j << ".pcd";
+				//writer.write<pcl::PointXYZ> (ss.str (), *cloud_cluster, false); //*
 
-	for(int w = 0; w < obstacle_.rows; ++w) {
-		for(int v = 0; v < obstacle_.cols; ++v) {
-			//cout<<"disp:"<<disp.at<int16_t>(w,v)<<endl;
-			//cout<<"Value:"<<obstacle_.at<int16_t>(w,v)<<endl;
-			if(obstacle_.at<int16_t>(w,v)!=0)
+				Lcloud=*cloud_cluster;
+				//// Create empty disparity map for Lidar data
+				cv::Mat obstacle_=cv::Mat::zeros(img1.rows, img1.cols, CV_16S);
+
+				for (int i = 0; i < Lcloud.points.size (); ++i)  //try with cloud height and width
 				{
-					if(corner_1.y > w)
-						corner_1.y = w;
-					if(corner_2.y < w)
-						corner_2.y= w;
-					if(corner_1.x > v)
-						corner_1.x = v;
-					if(corner_2.x < v)
-						corner_2.x = v;
+					//// Scale position from m to mm;
+					Lcloud.points[i].x = Lcloud.points[i].x/0.001;
+					Lcloud.points[i].y = Lcloud.points[i].y/0.001;
+					Lcloud.points[i].z = Lcloud.points[i].z/0.001;
+
+					float d = (Lcloud.points[i].z*dcx-f*B)/Lcloud.points[i].z; // disparity
+					float W = B/(-d+dcx); // Weighting
+					int x = (Lcloud.points[i].x+cx*W)/W; // x value
+					int y = (Lcloud.points[i].y+cy*W)/W; // y value
+
+					//// Filter out all LIDAR points which are outside the camera view
+					if(y>=0 && y<obstacle_.rows && x>=0 && x<obstacle_.cols)
+						{
+							obstacle_.at<int16_t>(y,x)=d;
+						}
+				}
+
+				cv::Point corner_1, corner_2;
+				corner_1.x = 99999;
+				corner_1.y = 99999;
+				corner_2.x = -99999;
+				corner_2.y = -99999;
+
+				for(int w = 0; w < obstacle_.rows; ++w) {
+					for(int v = 0; v < obstacle_.cols; ++v) {
+						//cout<<"disp:"<<disp.at<int16_t>(w,v)<<endl;
+						//cout<<"Value:"<<obstacle_.at<int16_t>(w,v)<<endl;
+						if(obstacle_.at<int16_t>(w,v)!=0)
+							{
+								label = true;
+								if(corner_1.y > w)
+									corner_1.y = w;
+								if(corner_2.y < w)
+									corner_2.y= w;
+								if(corner_1.x > v)
+									corner_1.x = v;
+								if(corner_2.x < v)
+									corner_2.x = v;
+							}
+						}
+					}
+
+				if(corner_1.x>50)
+					corner_1.x = corner_1.x - 50;
+				else corner_1.x = 0;
+				if(corner_1.y>50)
+					corner_1.y = corner_1.y - 50;
+				else corner_1.y = 0;
+
+				if(corner_2.x<1870)
+					corner_2.x = corner_2.x + 50;
+				else corner_2.x = 1920;
+				if(corner_2.y<1030)
+					corner_2.y = corner_2.y + 50;
+				else corner_2.y = 1080;
+
+				std::stringstream labelFile;
+				labelFile << "results/AU_data/Labels/pictureSet_" << img_counter <<".txt";
+
+				std::string labelFile_name = labelFile.str();
+
+				ofstream LabelFile(labelFile_name.c_str());
+
+				LabelFile<<"{("<<corner_1.x<<","<<corner_1.y<<"), ("<<corner_2.x<<","<<corner_2.y<<")}"<<endl;
+
+				cv::rectangle(img1, corner_1, corner_2, cv::Scalar(0, 0, 255), 2);
+
+				//std::stringstream obss;
+				//obss << "cluster_" << j <<".png";
+				//imshow("Obstacle", img1);
+				//cv::waitKey(0);
+				//// Save result of Lidar->image
+				//cv::imwrite(obss.str (),obstacle_);
+				j++;
 				}
 			}
+
 		}
 
-	if(corner_1.x>50)
-		corner_1.x = corner_1.x - 50;
-	else corner_1.x = 0;
-	if(corner_1.y>50)
-		corner_1.y = corner_1.y - 50;
-	else corner_1.y = 0;
+		if(label){
+			std::stringstream obstacle_file;
+			obstacle_file << "results/AU_data/Obstacles/obstacles_" << img_counter << ".png";
+			cv::imwrite(obstacle_file.str(),img1);
+			label = false;
+		}
 
-	if(corner_2.x<1870)
-		corner_2.x = corner_2.x + 50;
-	else corner_2.x = 1920;
-	if(corner_2.y<1030)
-		corner_2.y = corner_2.y + 50;
-	else corner_2.y = 1080;
-
-	cout<<"Label is: ("<<corner_1.x<<","<<corner_1.y<<") and ("<<corner_2.x<<","<<corner_2.y<<")."<<endl;
-
-	cv::rectangle(img1, corner_1, corner_2, cv::Scalar(0, 0, 255), 2);
-
-	//std::stringstream obss;
-	//obss << "cluster_" << j <<".png";
-	//imshow("Obstacle", img1);
-	//cv::waitKey(0);
-	//// Save result of Lidar->image
-	//cv::imwrite(obss.str (),obstacle_);
-	j++;
+		//std::vector<cv::Point> Labels;
 	}
 
-	cv::imwrite("Obstacles.png",img1);
-	std::vector<cv::Point> Labels;
-
 	}
-
 	printf("PROGRAM DONE!! \n");
 	return 0;
 }
