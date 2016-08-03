@@ -1129,7 +1129,7 @@ void StereoBM::operator()( InputArray _left, InputArray _right,
 {
 	//std::cout<<"I'm in!!! \n";
 	//imwrite("check.png", DISP);
-	std::cout<<"Interval:"<<INTERVAL<<std::endl;
+	//std::cout<<"Interval:"<<INTERVAL<<std::endl;
     Mat left = _left.getMat(), right = _right.getMat();
     CV_Assert( disptype == CV_16S || disptype == CV_32F );
     _disparity.create(left.size(), disptype);
