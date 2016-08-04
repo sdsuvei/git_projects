@@ -4,7 +4,7 @@ using namespace cv;
 using namespace std;
 
 cv::Mat disp, DISP;
-int INTERVAL = 70;
+int INTERVAL = 60;
 std::vector<double> gauss;
 double gaussarr[3000];
 double std_d = 300;
@@ -12,7 +12,7 @@ bool label = false;
 
 int main(int argc, char** argv) {
 
-	cv::setNumThreads(0);
+	//cv::setNumThreads(0);
 
 	const char* algorithm_opt = "--algorithm=";
 	const char* maxdisp_opt = "--max-disparity=";
@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
 		extrinsic_filename = "stereo_parameters/stereo_parameters_SAFE/ent.yml";
 
 
-	for(int img_counter = 291; img_counter<297; img_counter++){
+	for(int img_counter = 1; img_counter < 317; img_counter++){
 
 
 	std::cout<<"Processing picture set " << img_counter << endl;
@@ -169,8 +169,8 @@ int main(int argc, char** argv) {
 		rect_left << "results/AU_data/Left_rectified/left_rect" << img_counter <<".png";
 		rect_right << "results/AU_data/Right_rectified/right_rect" << img_counter <<".png";
 
-		cv::imwrite(rect_left.str(),img1);
-		cv::imwrite(rect_right.str(),img2);
+		//cv::imwrite(rect_left.str(),img1);
+		//cv::imwrite(rect_right.str(),img2);
 
 	}
 
@@ -429,7 +429,7 @@ int main(int argc, char** argv) {
 	std::stringstream dilated_lid;
 	dilated_lid << "results/AU_data/Dilated_lidar/dilated_lidar_" << img_counter << ".png";
 
-	cv::imwrite(dilated_lid.str(),dst);
+	//cv::imwrite(dilated_lid.str(),dst);
 	DISP = dst;
 
 	cv::StereoBM bm;
@@ -489,7 +489,7 @@ int main(int argc, char** argv) {
 		imwrite(disparity_filename2, disp);
 
 
-	//////////////////////////// FUNCTION FOR THIS  ///////////////////////////////////
+	////////////////////////////  FUNCTION FOR THIS  ///////////////////////////////////
 	//// Remove the tractor from the disparity map /point cloud
 	for(int w = 138; w < 434; ++w) {
 		for(int v = 0; v < 400; ++v) {
@@ -582,7 +582,6 @@ int main(int argc, char** argv) {
 	}
 
 
-	/////////////////////////// FUNCTION FOR THIS /////////////////////////////
 	//// Segmentation of the point cloud
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>), cloud_croped (new pcl::PointCloud<pcl::PointXYZ>), cloud_filtered (new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane_filter (new pcl::PointCloud<pcl::PointXYZ>);
@@ -606,7 +605,7 @@ int main(int argc, char** argv) {
 	*cloud_filtered = *cloud_croped;
 	std::stringstream pc_x_filtered;
 	pc_x_filtered << "pointclouds/AU_pointclouds/X_filtered/x_filter" << img_counter << ".pcd";
-	pcl::io::savePCDFile(pc_x_filtered.str(), *cloud_filtered);
+	//pcl::io::savePCDFile(pc_x_filtered.str(), *cloud_filtered);
 
 	// Create the segmentation object for the planar model and set all the parameters
 	pcl::SACSegmentation<pcl::PointXYZ> seg;
@@ -617,8 +616,8 @@ int main(int argc, char** argv) {
 	seg.setOptimizeCoefficients (true);
 	seg.setModelType (pcl::SACMODEL_PLANE);
 	seg.setMethodType (pcl::SAC_RANSAC);
-	seg.setMaxIterations (100);
-	seg.setDistanceThreshold (0.25);
+	seg.setMaxIterations (50);
+	seg.setDistanceThreshold (0.25);        // 0.25  ORG
 
 	if(cloud_filtered->size()>0)
 	{
@@ -645,7 +644,7 @@ int main(int argc, char** argv) {
 			if(cloud_filtered->size()>0){
 				std::stringstream plane_filtered_pc;
 				plane_filtered_pc <<"pointclouds/AU_pointclouds/Plane_filtered/plane_filter_" << img_counter << ".pcd";
-				pcl::io::savePCDFile(plane_filtered_pc.str(), *cloud_filtered);
+				//pcl::io::savePCDFile(plane_filtered_pc.str(), *cloud_filtered);
 			}
 			else cout<<"No obstacles found!"<<endl;
 		}
@@ -654,29 +653,34 @@ int main(int argc, char** argv) {
 			// Apply radius outlier filter
 			pcl::RadiusOutlierRemoval<pcl::PointXYZ> outrem;
 			outrem.setInputCloud(cloud_filtered);
-			outrem.setRadiusSearch(0.5);
-			outrem.setMinNeighborsInRadius (8000);
+			outrem.setRadiusSearch(0.5);                                 // 0.5 (ORG)
+			outrem.setMinNeighborsInRadius (5000);                       // 8000 (ORG)
 			// apply filter
 			outrem.filter (*cloud_rad_filter);
 			if(cloud_rad_filter->size()>0){
 			*cloud_filtered = *cloud_rad_filter;
 			std::stringstream radius_filtered_pc;
 			radius_filtered_pc <<"pointclouds/AU_pointclouds/Radius_filtered/radius_filter_" << img_counter << ".pcd";
-			pcl::io::savePCDFile(radius_filtered_pc.str(), *cloud_filtered);
+			//pcl::io::savePCDFile(radius_filtered_pc.str(), *cloud_filtered);
 			// Creating the KdTree object for the search method of the extraction
 			pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ>);
 			tree->setInputCloud (cloud_filtered);
 
 			std::vector<pcl::PointIndices> cluster_indices;
 			pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
-			ec.setClusterTolerance (0.09); // 2cm
-			ec.setMinClusterSize (8000);
-			ec.setMaxClusterSize (55000);
+			ec.setClusterTolerance (0.2);                               // 0.09 (ORG)      // 0.15
+			ec.setMinClusterSize (3000);                                 // 8000 (ORG)      // 3000
+			ec.setMaxClusterSize (110000);                                // 55000 (ORG)    // 100 000
 			ec.setSearchMethod (tree);
 			ec.setInputCloud (cloud_filtered);
 			ec.extract (cluster_indices);
 
 			int j = 0;
+			std::stringstream labelFile;
+			labelFile << "results/AU_data/Labels/pictureSet_" << img_counter <<".txt";
+			std::string labelFile_name = labelFile.str();
+			ofstream LabelFile(labelFile_name.c_str());
+
 			for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
 			{
 				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster (new pcl::PointCloud<pcl::PointXYZ>);
@@ -753,16 +757,11 @@ int main(int argc, char** argv) {
 					corner_2.y = corner_2.y + 50;
 				else corner_2.y = 1080;
 
-				std::stringstream labelFile;
-				labelFile << "results/AU_data/Labels/pictureSet_" << img_counter <<".txt";
-
-				std::string labelFile_name = labelFile.str();
-
-				ofstream LabelFile(labelFile_name.c_str());
-
 				LabelFile<<"{("<<corner_1.x<<","<<corner_1.y<<"), ("<<corner_2.x<<","<<corner_2.y<<")}"<<endl;
 
 				cv::rectangle(img1, corner_1, corner_2, cv::Scalar(0, 0, 255), 2);
+
+				std::vector<cv::Point> Labels;
 
 				//std::stringstream obss;
 				//obss << "cluster_" << j <<".png";
